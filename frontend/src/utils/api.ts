@@ -7,7 +7,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 second timeout
+  timeout: 30000, // 30 second timeout
 });
 
 // Request interceptor to automatically attach authorization header
@@ -108,8 +108,8 @@ export const portfolioApi = {
    */
   uploadResume: async (formData: FormData) => {
     const response = await apiClient.post<{ success: boolean; message: string; resumeUrl: string }>(
-      '/portfolios/resume', 
-      formData, 
+      '/portfolios/resume',
+      formData,
       {
         headers: {
           'Content-Type': 'multipart/form-data',

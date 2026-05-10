@@ -18,21 +18,22 @@ connectDB();
 
 const app = express();
 
-// Configure Cross-Origin Resource Sharing (CORS)
+/* =========================
+   CORS CONFIGURATION
+========================= */
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001', // for flexibility in local testing
+  'http://localhost:3001',
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       return callback(null, true);
     } else {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+      return callback(new Error('CORS blocked this origin'), false);
     }
   },
   credentials: true,
@@ -40,13 +41,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parser middleware (allows parsing JSON in request body)
+/* =========================
+   MIDDLEWARE
+========================= */
 app.use(express.json());
-
-// Serve static assets (such as local resume uploads)
 app.use('/uploads', express.static('public/uploads'));
 
-// API Root Health Check Route
+/* =========================
+   HEALTH CHECK ROUTES
+========================= */
+
+// Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -55,7 +60,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Register Auth & Portfolio Routes
+// Keep-alive ping route (Render cold start fix)
+app.get('/api/ping', (req, res) => {
+  res.send('alive');
+});
+
+/* =========================
+   API ROUTES
+========================= */
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolios', portfolioRoutes);
 app.use('/api/projects', projectRoutes);
@@ -63,27 +75,36 @@ app.use('/api/skills', skillRoutes);
 app.use('/api/socials', socialRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Base route fallback
+/* =========================
+   ROOT ROUTE
+========================= */
 app.get('/', (req, res) => {
-  res.send('Welcome to the Portfolio Builder API. Navigate to /api/health or /api/portfolios to interact.');
+  res.send('Welcome to the Portfolio Builder API. Use /api/health or /api/portfolios');
 });
 
-// Global Error Handling Middleware (must be registered after all routes)
+/* =========================
+   ERROR HANDLER
+========================= */
 app.use(errorHandler);
 
+/* =========================
+   START SERVER
+========================= */
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 \x1b[36mSERVER RUNNING IN ${process.env.NODE_ENV || 'development'} MODE\x1b[0m`);
-  console.log(`🌐 \x1b[35mLocal Link:\x1b[0m \x1b[4mhttp://localhost:${PORT}\x1b[0m`);
-  console.log(`📡 \x1b[35mHealth Check:\x1b[0m \x1b[4mhttp://localhost:${PORT}/api/health\x1b[0m`);
+  console.log(`🚀 SERVER RUNNING IN ${process.env.NODE_ENV || 'development'} MODE`);
+  console.log(`🌐 Local: http://localhost:${PORT}`);
+  console.log(`📡 Health: http://localhost:${PORT}/api/health`);
+  console.log(`📡 Ping: http://localhost:${PORT}/api/ping`);
   console.log(`======================================================\n`);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-  console.error(`\x1b[31mUncaught Rejection Error: ${err.message}\x1b[0m`);
-  // Close server & exit process
+/* =========================
+   ERROR HANDLING (CRASH SAFETY)
+========================= */
+process.on('unhandledRejection', (err) => {
+  console.error(`Uncaught Rejection Error: ${err.message}`);
   server.close(() => process.exit(1));
 });
