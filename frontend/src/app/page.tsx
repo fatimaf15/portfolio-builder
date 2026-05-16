@@ -230,9 +230,9 @@ export default function Home() {
           {/* Core connection diagram */}
           <div className="mt-16 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-8 max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2">
-              <h4 className="text-base font-bold text-white">Curious to test the local connection?</h4>
+              <h4 className="text-base font-bold text-white">Ready to build your developer identity?</h4>
               <p className="text-xs text-zinc-400 max-w-md">
-                Launch the Express server and MongoDB locally, then click on 'Seed Database Data' or 'Build Yours' to watch live documents stream securely into your database instantly.
+                Launch the interactive builder to create your custom portfolio, or explore the live database grid to see how other developer profiles look in production.
               </p>
             </div>
             <div className="flex gap-4 shrink-0">
