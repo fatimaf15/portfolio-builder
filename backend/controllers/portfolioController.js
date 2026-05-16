@@ -335,10 +335,12 @@ export const getPublicPortfolio = async (req, res, next) => {
         sectionOrder: portfolio?.sectionOrder || ['skills', 'projects', 'experience'],
         projects: projects.length > 0 ? projects : (portfolio?.projects || []),
         skills: skills.length > 0 ? skills.map(s => s.name) : (portfolio?.skills || []),
-        socials: socials.length > 0 ? socials : [
-          { platform: 'GitHub', url: portfolio?.contact?.github || 'https://github.com' },
-          { platform: 'LinkedIn', url: portfolio?.contact?.linkedin || 'https://linkedin.com' }
-        ]
+        socials: socials.length > 0 ? socials : (function() {
+  const arr = [];
+  if (portfolio?.contact?.github) arr.push({ platform: 'GitHub', url: portfolio.contact.github });
+  if (portfolio?.contact?.linkedin) arr.push({ platform: 'LinkedIn', url: portfolio.contact.linkedin });
+  return arr;
+})()
       }
     });
   } catch (error) {

@@ -62,7 +62,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           contact: {
             email: user?.email || 'dev@example.com',
             github: 'https://github.com',
-            linkedin: 'https://linkedin.com'
+            linkedin: ''
           },
           template: 'dark'
         };
