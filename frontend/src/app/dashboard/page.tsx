@@ -277,7 +277,7 @@ export default function DashboardHome() {
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/5 border border-indigo-500/10 rounded-3xl p-8 relative overflow-hidden backdrop-blur-sm shadow-xl"
+        className="flex flex-col md:flex-row md:items-center justify-between glass border-indigo-500/10 rounded-3xl p-8 relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[100px] -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-[100px] -ml-32 -mb-32" />
@@ -315,7 +315,7 @@ export default function DashboardHome() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-zinc-900/20 border border-zinc-900 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4"
+        className="glass rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4 min-w-0">
           <div className="p-3 bg-white/5 text-zinc-400 rounded-xl hidden sm:block">
@@ -360,7 +360,7 @@ export default function DashboardHome() {
         
         <motion.div 
           whileHover={{ y: -4, scale: 1.01 }}
-          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+          className="glass glass-hover rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden group"
         >
           <div className="p-4 bg-blue-500/10 text-blue-400 rounded-2xl group-hover:bg-blue-500/20 transition-all">
             <Eye className="w-6 h-6" />
@@ -376,7 +376,7 @@ export default function DashboardHome() {
 
         <motion.div 
           whileHover={{ y: -4, scale: 1.01 }}
-          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+          className="glass glass-hover rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden group"
         >
           <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl group-hover:bg-indigo-500/20 transition-all">
             <MousePointer className="w-6 h-6" />
@@ -392,7 +392,7 @@ export default function DashboardHome() {
 
         <motion.div 
           whileHover={{ y: -4, scale: 1.01 }}
-          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+          className="glass glass-hover rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden group"
         >
           <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl group-hover:bg-emerald-500/20 transition-all">
             <Download className="w-6 h-6" />
@@ -412,7 +412,7 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
         {/* Left: Interactive Profile Card */}
-        <div className="lg:col-span-8 bg-zinc-900/40 border border-zinc-900 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md flex flex-col justify-between">
+        <div className="lg:col-span-8 glass rounded-3xl p-8 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl" />
           
           <div>
@@ -569,7 +569,7 @@ export default function DashboardHome() {
         <div className="lg:col-span-4 space-y-6 flex flex-col justify-between">
           
           {/* 1. Profile Strength Widget */}
-          <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-md text-center">
+          <div className="glass rounded-3xl p-6 flex flex-col items-center justify-center relative overflow-hidden text-center">
             <h3 className="text-xs font-extrabold uppercase tracking-widest text-zinc-400 flex items-center gap-2 mb-6 select-none">
               <Sparkles className="w-4 h-4 text-indigo-400" />
               Profile Strength
@@ -613,7 +613,7 @@ export default function DashboardHome() {
           </div>
 
           {/* 2. PDF Resume upload & preview card */}
-          <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md">
+          <div className="glass rounded-3xl p-8 relative overflow-hidden">
             <div className="flex items-center justify-between border-b border-zinc-850/60 pb-3.5 mb-4 select-none">
               <h3 className="text-xs font-extrabold uppercase tracking-widest text-zinc-400 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-indigo-400" />
@@ -700,7 +700,7 @@ export default function DashboardHome() {
       </div>
 
       {/* B. Temporal Engagement Stream Recharts Chart! */}
-      <div className="bg-zinc-900/30 border border-zinc-900 rounded-2xl p-6 relative overflow-hidden backdrop-blur-md">
+      <div className="glass rounded-3xl p-8 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-850/60 pb-5 mb-6 gap-3 select-none">
           <div>
             <h3 className="text-xs font-extrabold uppercase tracking-widest text-zinc-400 flex items-center gap-2">

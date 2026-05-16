@@ -181,45 +181,45 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Step 1 card */}
-            <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 hover:border-zinc-700/60 transition-all">
+            <div className="glass glass-hover rounded-2xl p-6">
               <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-6">
                 <Cpu className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-white mb-3">1. Frontend Client (Next.js)</h3>
-              <p className="text-sm text-zinc-450 leading-relaxed mb-4">
+              <p className="text-sm text-zinc-400 leading-relaxed mb-4">
                 Built with the Next.js App Router, Tailwind CSS for visual systems, and Framer Motion for premium-feel animations. State variables manage interactive local entries.
               </p>
-              <div className="text-xs font-mono text-zinc-500 bg-zinc-950 p-3 rounded-lg border border-zinc-900/60">
+              <div className="text-xs font-mono text-zinc-500 bg-black/40 p-3 rounded-lg border border-white/5">
                 // Axios calls with credentials<br />
                 axios.post('/portfolios', data)
               </div>
             </div>
 
             {/* Step 2 card */}
-            <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 hover:border-zinc-700/60 transition-all">
+            <div className="glass glass-hover rounded-2xl p-6">
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-6">
                 <Server className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-white mb-3">2. REST API Server (Express)</h3>
-              <p className="text-sm text-zinc-450 leading-relaxed mb-4">
+              <p className="text-sm text-zinc-400 leading-relaxed mb-4">
                 Node and Express form the API routing layer. Environment variables load securely, CORS settings whitelist frontend requests, and customized middleware captures errors gracefully.
               </p>
-              <div className="text-xs font-mono text-zinc-500 bg-zinc-950 p-3 rounded-lg border border-zinc-900/60">
+              <div className="text-xs font-mono text-zinc-500 bg-black/40 p-3 rounded-lg border border-white/5">
                 // Express controller handler<br />
                 app.use('/api/portfolios', routes)
               </div>
             </div>
 
             {/* Step 3 card */}
-            <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 hover:border-zinc-700/60 transition-all">
+            <div className="glass glass-hover rounded-2xl p-6">
               <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-400 flex items-center justify-center mb-6">
                 <Database className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-white mb-3">3. NoSQL Database (MongoDB)</h3>
-              <p className="text-sm text-zinc-450 leading-relaxed mb-4">
+              <p className="text-sm text-zinc-400 leading-relaxed mb-4">
                 Mongoose models declare developer profile schemas in strict JavaScript structures. BSON documents are stored in the cloud or local MongoDB, enabling fast retrieval and scaling.
               </p>
-              <div className="text-xs font-mono text-zinc-500 bg-zinc-950 p-3 rounded-lg border border-zinc-900/60">
+              <div className="text-xs font-mono text-zinc-500 bg-black/40 p-3 rounded-lg border border-white/5">
                 // Mongoose Schema operations<br />
                 await Portfolio.create(req.body)
               </div>
@@ -228,7 +228,7 @@ export default function Home() {
           </div>
 
           {/* Core connection diagram */}
-          <div className="mt-16 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-8 max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="mt-16 glass rounded-3xl p-8 max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 border-indigo-500/10">
             <div className="space-y-2">
               <h4 className="text-base font-bold text-white">Ready to build your developer identity?</h4>
               <p className="text-xs text-zinc-400 max-w-md">
