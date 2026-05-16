@@ -11,7 +11,7 @@ import {
   uploadResume,
   getGithubStats
 } from '../controllers/portfolioController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, optionalAuth } from '../middleware/authMiddleware.js';
 import { upload } from '../utils/upload.js';
 import { recordEvent } from '../controllers/analyticsController.js';
 
@@ -24,7 +24,7 @@ router.post('/resume', protect, upload.single('resume'), uploadResume);
 router.post('/public/:username/analytics', recordEvent);
 
 router.get('/me', protect, getMyPortfolio);
-router.get('/public/:username', getPublicPortfolio);
+router.get('/public/:username', optionalAuth, getPublicPortfolio);
 
 router.route('/')
   .get(getPortfolios)

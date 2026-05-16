@@ -24,7 +24,9 @@ import {
   TrendingUp,
   MousePointer,
   Download,
-  Globe
+  Globe,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import Link from 'next/link';
@@ -254,6 +256,18 @@ export default function DashboardHome() {
     });
   };
 
+  const handleTogglePrivacy = async () => {
+    const newStatus = !portfolio.isPublic;
+    updatePortfolioState({ isPublic: newStatus });
+    const success = await saveChanges({ isPublic: newStatus });
+    if (success) {
+      showToast(newStatus ? 'Portfolio is now PUBLIC' : 'Portfolio is now PRIVATE', 'success');
+    } else {
+      // Revert if failed
+      updatePortfolioState({ isPublic: !newStatus });
+    }
+  };
+
   return (
     <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto relative min-h-[85vh]">
       
@@ -316,6 +330,21 @@ export default function DashboardHome() {
         </div>
         
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={handleTogglePrivacy}
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 border text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              portfolio.isPublic 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
+                : 'bg-zinc-900 hover:bg-zinc-850 border-zinc-800 text-zinc-400 hover:text-white'
+            }`}
+            title={portfolio.isPublic ? "Currently Public. Click to make Private." : "Currently Private. Click to make Public."}
+          >
+            {portfolio.isPublic ? (
+              <><Unlock className="w-3.5 h-3.5" /> <span>Public</span></>
+            ) : (
+              <><Lock className="w-3.5 h-3.5" /> <span>Private</span></>
+            )}
+          </button>
           <button
             onClick={handleCopyLink}
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs font-bold text-white rounded-xl transition-all cursor-pointer group"

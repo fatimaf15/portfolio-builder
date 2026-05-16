@@ -12,7 +12,7 @@ import path from 'path';
 // @access  Public
 export const getPortfolios = async (req, res, next) => {
   try {
-    const portfolios = await Portfolio.find().sort({ createdAt: -1 });
+    const portfolios = await Portfolio.find({ isPublic: true }).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: portfolios.length,
@@ -289,6 +289,17 @@ export const getPublicPortfolio = async (req, res, next) => {
     if (!portfolio) {
       // Fallback only if no associated portfolio exists yet
       portfolio = await Portfolio.findOne({ fullName: user.username });
+    }
+
+    if (portfolio) {
+      // Check privacy settings
+      if (!portfolio.isPublic) {
+        // If private, only the owner can access
+        if (!req.user || req.user._id.toString() !== portfolio.user.toString()) {
+          res.status(403);
+          throw new Error('This portfolio is private and cannot be viewed.');
+        }
+      }
     }
 
     // 6. Optionally fetch GitHub stats if linked

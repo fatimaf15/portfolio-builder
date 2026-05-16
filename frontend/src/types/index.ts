@@ -42,6 +42,7 @@ export interface Portfolio {
   projects: Project[];
   contact: Contact;
   githubUsername?: string;
+  isPublic?: boolean;
   template: 'dark' | 'light' | 'minimal' | 'futuristic';
   themeSettings?: ThemeSettings;
   sectionOrder?: string[];

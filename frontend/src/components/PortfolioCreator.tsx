@@ -146,7 +146,8 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
         linkedin,
         twitter
       },
-      template
+      template,
+      isPublic: false
     };
 
     try {

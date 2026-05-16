@@ -91,6 +91,10 @@ const PortfolioSchema = new mongoose.Schema({
   sectionOrder: {
     type: [String],
     default: ['skills', 'projects', 'github', 'experience']
+  },
+  isPublic: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true // Automatically adds createdAt and updatedAt
