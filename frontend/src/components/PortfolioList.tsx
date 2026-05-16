@@ -57,6 +57,40 @@ export default function PortfolioList({ portfolios, loading, onDelete, onSeed }:
     show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 100 } }
   };
 
+  const demoPortfolio: Portfolio = {
+    _id: 'demo-preview-only',
+    fullName: "Alex Developer (Demo Preview)",
+    title: "Senior Full Stack Engineer",
+    bio: "This is a demo template preview showing how your portfolio will look in the public Explore section. Create your own by clicking 'Launch Builder'!",
+    avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=200&h=200",
+    skills: ["React", "Node.js", "MongoDB", "TypeScript", "Tailwind"],
+    experience: [
+      {
+        company: "Tech Innovations Inc.",
+        role: "Frontend Engineer",
+        duration: "Jan 2022 - Present",
+        description: "Built highly performant and accessible user interfaces."
+      }
+    ],
+    projects: [
+      {
+        title: "E-Commerce Admin Dashboard",
+        description: "Real-time analytics and inventory management system.",
+        techStack: ["Next.js", "Tailwind CSS"],
+        githubUrl: "https://github.com",
+        liveUrl: "https://example.com"
+      }
+    ],
+    contact: {
+      email: "demo@example.com",
+      github: "https://github.com",
+      linkedin: "https://linkedin.com"
+    },
+    template: "dark"
+  };
+
+  const displayPortfolios = portfolios.length > 0 ? portfolios : [demoPortfolio];
+
   return (
     <div id="explore-section" className="py-24 bg-zinc-950 border-t border-zinc-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,38 +130,28 @@ export default function PortfolioList({ portfolios, loading, onDelete, onSeed }:
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State Instructions (only when showing demo) */}
         {!loading && portfolios.length === 0 && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center py-16 px-6 bg-zinc-900/40 border border-zinc-800/80 rounded-2xl max-w-2xl mx-auto"
-          >
-            <Terminal className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-white">No Portfolios Found</h3>
-            <p className="text-zinc-500 text-sm mt-2 max-w-md mx-auto">
-              The MongoDB database is currently empty. Click the button below to seed mock developer profiles, or click 'Build Yours' in the navbar to insert a new database document!
+          <div className="mb-10 text-center space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold rounded-full">
+              <Sparkles className="w-3.5 h-3.5" /> Database Empty — Showing Demo Template
+            </div>
+            <p className="text-zinc-400 text-sm max-w-xl mx-auto">
+              There are no public portfolios in the database yet. Here is a preview of what a portfolio card looks like. Click "Seed Database Data" above to add mock data, or build your own!
             </p>
-            <button
-              onClick={onSeed}
-              className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-sm font-bold text-white transition-all shadow-[0_0_15px_rgba(99,102,241,0.2)]"
-            >
-              <Sparkles className="w-4 h-4" />
-              Populate Database with Seed Profiles
-            </button>
-          </motion.div>
+          </div>
         )}
 
         {/* Portfolios Grid */}
-        {!loading && portfolios.length > 0 && (
+        {!loading && (
           <motion.div 
             variants={containerVariants}
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: '-100px' }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 ${portfolios.length === 0 ? 'justify-items-center' : ''}`}
           >
-            {portfolios.map((portfolio) => (
+            {displayPortfolios.map((portfolio) => (
               <motion.div
                 key={portfolio._id}
                 variants={cardVariants}
@@ -136,12 +160,13 @@ export default function PortfolioList({ portfolios, loading, onDelete, onSeed }:
               >
                 {/* Theme indicator */}
                 <span className={`absolute top-4 right-4 px-2 py-0.5 text-[10px] font-bold rounded-md uppercase border ${
+                  portfolio._id === 'demo-preview-only' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
                   portfolio.template === 'dark' ? 'bg-zinc-950 text-indigo-400 border-indigo-500/20' :
                   portfolio.template === 'futuristic' ? 'bg-purple-950 text-purple-400 border-purple-500/20' :
                   portfolio.template === 'minimal' ? 'bg-zinc-800 text-zinc-400 border-zinc-700' :
                   'bg-white text-zinc-900 border-zinc-200'
                 }`}>
-                  {portfolio.template} theme
+                  {portfolio._id === 'demo-preview-only' ? 'Demo Template' : `${portfolio.template} theme`}
                 </span>
 
                 {/* Avatar & Header */}
@@ -224,13 +249,15 @@ export default function PortfolioList({ portfolios, loading, onDelete, onSeed }:
                       <Eye className="w-3.5 h-3.5" />
                       Inspect
                     </button>
-                    <button
-                      onClick={() => portfolio._id && onDelete(portfolio._id)}
-                      className="p-2 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 rounded-lg transition-all cursor-pointer"
-                      title="Delete profile from database"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {portfolio._id !== 'demo-preview-only' && (
+                      <button
+                        onClick={() => portfolio._id && onDelete(portfolio._id)}
+                        className="p-2 bg-zinc-950 border border-zinc-800 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 rounded-lg transition-all cursor-pointer"
+                        title="Delete profile from database"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
