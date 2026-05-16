@@ -11,8 +11,10 @@ import {
   Grid,
   CheckCircle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
+import { useToast } from '../../../context/ToastContext';
 
 interface SkillType {
   _id: string;
@@ -51,16 +53,7 @@ export default function SkillsPage() {
     { name: 'Figma', category: 'Design' }
   ];
 
-  // Toast Notification states
-  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' }[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    const id = Math.random().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  const { showToast } = useToast();
 
   // Hydrate skill list on mount
   const loadSkills = async () => {
@@ -142,27 +135,7 @@ export default function SkillsPage() {
   return (
     <div className="p-6 sm:p-8 space-y-8 max-w-5xl mx-auto relative min-h-[85vh]">
       
-      {/* Absolute Toast alert portal */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 25, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className={`px-5 py-3.5 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 min-w-[240px] backdrop-blur-md ${
-                toast.type === 'success' 
-                  ? 'bg-emerald-950/80 border-emerald-500/20 text-emerald-400' 
-                  : 'bg-rose-950/80 border-rose-500/20 text-rose-400'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current inline-block shrink-0 animate-pulse" />
-              <div className="flex-1">{toast.message}</div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {/* Global Toast portal handled by RootLayout */}
 
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-900 pb-5">
@@ -271,27 +244,35 @@ export default function SkillsPage() {
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
-                        className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 text-xs font-bold rounded-full transition-all group"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-950 border border-zinc-850 hover:border-indigo-500/30 text-zinc-300 text-xs font-bold rounded-xl transition-all group shadow-sm"
                       >
-                        <span>{skill.name}</span>
-                        <span className="text-[9px] font-semibold text-zinc-500 px-1 bg-zinc-950/40 rounded uppercase font-mono">{skill.level}</span>
+                        <span className="group-hover:text-indigo-400 transition-colors">{skill.name}</span>
+                        <span className="text-[8px] font-black text-indigo-400/70 px-1.5 py-0.5 bg-indigo-500/5 rounded-md uppercase tracking-tighter">{skill.level}</span>
                         <button
                           onClick={() => handleDeleteSkill(skill._id, skill.name)}
                           disabled={deletingId === skill._id}
-                          className="p-0.5 rounded-full hover:bg-indigo-500/30 text-indigo-400 hover:text-white transition-all cursor-pointer"
-                          title={`Delete ${skill.name}`}
+                          className="p-1 rounded-lg hover:bg-rose-500/10 text-zinc-600 hover:text-rose-400 transition-all cursor-pointer"
+                          title={`Remove ${skill.name}`}
                         >
                           {deletingId === skill._id ? (
-                            <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <X className="w-3 h-3" />
+                            <X className="w-3.5 h-3.5" />
                           )}
                         </button>
                       </motion.div>
                     ))
                   ) : (
-                    <div className="py-6 text-center text-xs text-zinc-650 w-full border border-dashed border-zinc-900 rounded-xl">
-                      No active skills loaded in stack yet. Write some above or tap suggestions on the right!
+                    <div className="py-12 text-center w-full border-2 border-dashed border-zinc-900 rounded-3xl flex flex-col items-center gap-4">
+                      <div className="p-4 bg-zinc-900 rounded-2xl">
+                        <Zap className="w-8 h-8 text-zinc-700" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-zinc-400">Your stack is empty</p>
+                        <p className="text-[11px] text-zinc-500 max-w-[200px] leading-relaxed mx-auto">
+                          Add the technologies you master to show them on your public profile.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </AnimatePresence>

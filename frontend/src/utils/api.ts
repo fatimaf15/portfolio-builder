@@ -3,7 +3,7 @@ import { Portfolio, ApiResponse, User, AuthResponse } from '../types';
 
 // Create a configured Axios instance
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,6 +52,10 @@ export const portfolioApi = {
    */
   getPortfolios: async () => {
     const response = await apiClient.get<ApiResponse<Portfolio[]>>('/portfolios');
+    return response.data;
+  },
+  getMyPortfolio: async () => {
+    const response = await apiClient.get<ApiResponse<Portfolio[]>>('/portfolios/me');
     return response.data;
   },
 
@@ -141,6 +145,34 @@ export const portfolioApi = {
   getMyAnalytics: async () => {
     const response = await apiClient.get<ApiResponse<any>>('/analytics/me');
     return response.data;
+  },
+
+  /**
+   * General purpose image upload for avatars and project assets
+   */
+  uploadImage: async (formData: FormData) => {
+    const response = await apiClient.post<{ success: boolean; message: string; url: string }>(
+      '/upload',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Resolve an image URL: handles both absolute URLs and relative paths from the backend
+   */
+  getImageUrl: (url: string | undefined) => {
+    if (!url) return 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    
+    // Prefix with backend base URL if it's a relative path
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:5000';
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
   }
 };
 

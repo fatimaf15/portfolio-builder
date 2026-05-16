@@ -24,6 +24,11 @@ const ContactSchema = new mongoose.Schema({
 });
 
 const PortfolioSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   fullName: {
     type: String,
     required: [true, 'Full name is required'],
@@ -50,6 +55,10 @@ const PortfolioSchema = new mongoose.Schema({
   projects: [ProjectSchema],
   contact: ContactSchema,
   resumeUrl: {
+    type: String,
+    default: ''
+  },
+  githubUsername: {
     type: String,
     default: ''
   },
@@ -81,7 +90,7 @@ const PortfolioSchema = new mongoose.Schema({
   },
   sectionOrder: {
     type: [String],
-    default: ['skills', 'projects', 'experience']
+    default: ['skills', 'projects', 'github', 'experience']
   }
 }, {
   timestamps: true // Automatically adds createdAt and updatedAt

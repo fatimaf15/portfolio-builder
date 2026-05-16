@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { portfolioApi } from '../utils/api';
 import { Portfolio } from '../types';
 import Navbar from '../components/Navbar';
@@ -28,6 +29,7 @@ export default function Home() {
   const [dbConnected, setDbConnected] = useState<boolean | null>(null);
   
   const { user } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const handleOpenCreator = () => {
@@ -62,17 +64,17 @@ export default function Home() {
 
   // Handle deleting portfolio
   const handleDeletePortfolio = async (id: string) => {
-    const confirm = window.confirm('Are you sure you want to delete this portfolio from MongoDB?');
-    if (!confirm) return;
+    const confirmed = window.confirm('Permanently delete this document from your MongoDB cloud?');
+    if (!confirmed) return;
 
     try {
       const res = await portfolioApi.deletePortfolio(id);
       if (res.success) {
-        alert('Document deleted successfully from MongoDB!');
+        showToast('Document deleted from cloud successfully', 'success');
         fetchPortfolios();
       }
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      showToast(`Delete failed: ${err.message}`, 'error');
     }
   };
 
@@ -82,12 +84,12 @@ export default function Home() {
     try {
       const res = await portfolioApi.seedData();
       if (res.success) {
-        alert('MongoDB database populated with seed profiles successfully!');
+        showToast('Database populated with seed profiles!', 'success');
         setPortfolios(res.data);
         setDbConnected(true);
       }
     } catch (err: any) {
-      alert(`Connection Error: Ensure your Node/Express backend is running and MongoDB is connected! Details: ${err.message}`);
+      showToast(`Connection Error: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -98,13 +100,13 @@ export default function Home() {
     try {
       const res = await portfolioApi.createPortfolio(newPortfolio);
       if (res.success) {
-        alert('Nice! Portfolio document inserted successfully into MongoDB!');
+        showToast('Nice! Portfolio document inserted successfully!', 'success');
         fetchPortfolios();
         return true;
       }
       return false;
     } catch (err: any) {
-      alert(`Failed to save: Ensure your Express server is running on port 5000. Error details: ${err.message}`);
+      showToast(`Failed to save: ${err.message}`, 'error');
       return false;
     }
   };

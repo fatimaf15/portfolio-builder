@@ -12,10 +12,11 @@ import {
   Moon, 
   Type, 
   Layers, 
-  CheckCircle,
   HelpCircle,
-  Menu
+  Menu,
+  RotateCcw
 } from 'lucide-react';
+import { useToast } from '../../../context/ToastContext';
 
 // Import dnd-kit cores for tactile reordering
 import {
@@ -82,7 +83,7 @@ function SortableSectionItem({ id, name, label }: { id: string; name: string; la
 }
 
 export default function SettingsPage() {
-  const { portfolio, updatePortfolioState, loading } = useDashboard();
+  const { portfolio, updatePortfolioState, loading, saveChanges } = useDashboard();
 
   // Theme Customizer States
   const [template, setTemplate] = useState<'dark' | 'light' | 'minimal' | 'futuristic'>('dark');
@@ -94,8 +95,7 @@ export default function SettingsPage() {
   // Section Reordering list states
   const [sections, setSections] = useState<string[]>(['skills', 'projects', 'experience']);
 
-  // Success Notification banner
-  const [isSaved, setIsSaved] = useState(false);
+  const { showToast } = useToast();
 
   // Preset Colors Swatch Catalog
   const swatches = [
@@ -168,8 +168,8 @@ export default function SettingsPage() {
     );
   }
 
-  const handleSaveSettings = () => {
-    updatePortfolioState({
+  const handleSaveSettings = async () => {
+    const payload = {
       template,
       themeSettings: {
         mode,
@@ -178,10 +178,14 @@ export default function SettingsPage() {
         cardStyle
       },
       sectionOrder: sections
-    });
+    };
 
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3500);
+    updatePortfolioState(payload);
+
+    const success = await saveChanges(payload);
+    if (success) {
+      showToast('Theme and layout preferences synced!', 'success');
+    }
   };
 
   const getPreviewFontClass = () => {
@@ -240,20 +244,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* Success alert banner */}
-      <AnimatePresence>
-        {isSaved && (
-          <motion.div
-            initial={{ opacity: 0, y: -15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            className="p-4 bg-emerald-950/80 border border-emerald-500/25 text-emerald-400 text-xs font-bold rounded-xl flex items-center gap-2 max-w-xl"
-          >
-            <CheckCircle className="w-4 h-4 shrink-0" />
-            <span>Theme preferences and visual sequences successfully synced inside database!</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Success banner removed in favor of global toasts */}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
@@ -312,7 +303,31 @@ export default function SettingsPage() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setTemplate(t as any)}
+                    onClick={() => {
+                      setTemplate(t as any);
+                      // Auto-apply granular presets based on template choice
+                      if (t === 'light') {
+                        setMode('light');
+                        setAccentColor('#6366f1');
+                        setFont('sans');
+                        setCardStyle('glass');
+                      } else if (t === 'minimal') {
+                        setMode('dark');
+                        setAccentColor('#a1a1aa');
+                        setFont('mono');
+                        setCardStyle('flat');
+                      } else if (t === 'futuristic') {
+                        setMode('dark');
+                        setAccentColor('#22d3ee');
+                        setFont('mono');
+                        setCardStyle('neon');
+                      } else if (t === 'dark') {
+                        setMode('dark');
+                        setAccentColor('#6366f1');
+                        setFont('sans');
+                        setCardStyle('glass');
+                      }
+                    }}
                     className={`px-4 py-3 border text-xs font-bold rounded-xl transition-all capitalize cursor-pointer ${
                       isActive 
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.15)]' 
@@ -468,9 +483,13 @@ export default function SettingsPage() {
           </div>
 
           {/* Mockup Canvas */}
-          <div className={`p-6 border border-zinc-900/80 rounded-2xl min-h-[380px] flex flex-col justify-between transition-all duration-350 relative ${mode === 'light' ? 'bg-slate-50' : 'bg-black'}`}>
+          <div className={`p-6 border min-h-[380px] flex flex-col justify-between transition-all duration-350 relative ${
+            mode === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-black border-zinc-900'
+          } ${template === 'futuristic' ? 'border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.05)]' : 'rounded-2xl'}`}>
             
-            <div className={`flex items-center justify-between border-b pb-3 shrink-0 ${mode === 'light' ? 'border-slate-200' : 'border-zinc-900'}`}>
+            <div className={`flex items-center justify-between border-b pb-3 shrink-0 ${
+              mode === 'light' ? 'border-slate-200' : template === 'futuristic' ? 'border-cyan-500/10' : 'border-zinc-900'
+            }`}>
               <div className="flex items-center gap-1.5 font-mono text-[9px] font-bold text-zinc-500 select-none">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
                 <span>DEV_PORTFOLIO</span>

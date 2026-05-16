@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Sidebar from '../../components/dashboard/Sidebar';
+import MobileNav from '../../components/dashboard/MobileNav';
 import TopNavbar from '../../components/dashboard/TopNavbar';
 import { DashboardProvider } from '../../context/DashboardContext';
 
@@ -22,9 +23,12 @@ export default function DashboardLayout({
           <TopNavbar />
 
           {/* Core sub-route layout injection slot */}
-          <div className="flex-grow">
+          <div className="flex-grow pb-20 md:pb-0">
             {children}
           </div>
+
+          {/* Bottom nav for mobile users */}
+          <MobileNav />
         </div>
       </div>
     </DashboardProvider>

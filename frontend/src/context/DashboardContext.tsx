@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { portfolioApi } from '../utils/api';
 import { Portfolio } from '../types';
 import { useAuth } from './AuthContext';
+import { useToast } from './ToastContext';
 
 interface DashboardContextType {
   portfolio: Portfolio | null;
@@ -23,11 +24,12 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [saving, setSaving] = useState(false);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const fetchPortfolio = async () => {
     setLoading(true);
     try {
-      const res = await portfolioApi.getPortfolios();
+      const res = await portfolioApi.getMyPortfolio();
       if (res.success && res.data.length > 0) {
         // Hydrate with the user's portfolio (for this demo, we bind to the first database record)
         setPortfolio(res.data[0]);
@@ -96,11 +98,12 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setUnsavedChanges(true);
   };
 
-  const saveChanges = async () => {
+  const saveChanges = async (overrides?: Partial<Portfolio>) => {
     if (!portfolio || !portfolio._id) return false;
     setSaving(true);
     try {
-      const res = await portfolioApi.updatePortfolio(portfolio._id, portfolio);
+      const dataToSave = overrides ? { ...portfolio, ...overrides } : portfolio;
+      const res = await portfolioApi.updatePortfolio(portfolio._id, dataToSave);
       if (res.success) {
         setUnsavedChanges(false);
         setPortfolio(res.data);
@@ -109,7 +112,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return false;
     } catch (err: any) {
       console.error('Failed to save dashboard modifications:', err.message);
-      alert(`Save failed: ${err.message}`);
+      showToast(`Save failed: ${err.message}`, 'error');
       return false;
     } finally {
       setSaving(false);

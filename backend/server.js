@@ -8,6 +8,7 @@ import projectRoutes from './routes/projectRoutes.js';
 import skillRoutes from './routes/skillRoutes.js';
 import socialRoutes from './routes/socialRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -21,21 +22,9 @@ const app = express();
 /* =========================
    CORS CONFIGURATION
 ========================= */
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001',
-];
-
+// Allow all origins in development to avoid CORS issues
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('CORS blocked this origin'), false);
-    }
-  },
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -45,6 +34,13 @@ app.use(cors({
    MIDDLEWARE
 ========================= */
 app.use(express.json());
+
+// Request logger middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use('/uploads', express.static('public/uploads'));
 
 /* =========================
@@ -74,6 +70,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/socials', socialRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/upload', uploadRoutes);
 
 /* =========================
    ROOT ROUTE

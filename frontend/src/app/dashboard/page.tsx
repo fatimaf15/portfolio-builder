@@ -23,8 +23,10 @@ import {
   Eye,
   TrendingUp,
   MousePointer,
-  Download
+  Download,
+  Globe
 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 import Link from 'next/link';
 
 // Import Recharts components for statistical visual charts
@@ -39,7 +41,7 @@ import {
 } from 'recharts';
 
 export default function DashboardHome() {
-  const { portfolio, updatePortfolioState, loading, saving } = useDashboard();
+  const { portfolio, updatePortfolioState, loading, saving, saveChanges } = useDashboard();
   const { user } = useAuth();
 
   // Internal component states for profile editing
@@ -63,16 +65,7 @@ export default function DashboardHome() {
   // Hydration boundary tracker to support clean Next.js charting
   const [mounted, setMounted] = useState(false);
 
-  // Dynamic Toast Alerts
-  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' }[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    const id = Math.random().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  const { showToast } = useToast();
 
   // Hydrate inputs and fetch stats on mount
   useEffect(() => {
@@ -86,6 +79,8 @@ export default function DashboardHome() {
   }, [portfolio]);
 
   useEffect(() => {
+    if (!portfolio) return; // Prevent analytics fetch if no portfolio exists yet
+
     const fetchAnalytics = async () => {
       setLoadingAnalytics(true);
       try {
@@ -94,14 +89,15 @@ export default function DashboardHome() {
           setAnalyticsData(res.data);
         }
       } catch (err: any) {
-        console.error('Failed to load user analytics', err);
+        // Log silently as analytics might just be empty for new users
+        console.warn('User analytics not yet available or empty');
       } finally {
         setLoadingAnalytics(false);
       }
     };
 
     fetchAnalytics();
-  }, []);
+  }, [portfolio]);
 
   if (loading) {
     return (
@@ -135,15 +131,59 @@ export default function DashboardHome() {
 
   const completionPercent = calculateCompletion();
 
-  const handleSaveProfile = () => {
-    updatePortfolioState({
+  const handleSaveProfile = async () => {
+    const payload = {
       fullName,
       title,
       bio,
       avatarUrl
-    });
-    setIsEditing(false);
-    showToast('Core credentials updated local state!', 'success');
+    };
+
+    updatePortfolioState(payload);
+    
+    const success = await saveChanges(payload);
+    if (success) {
+      showToast('Global digital identity synchronized!', 'success');
+      setIsEditing(false);
+    }
+  };
+
+  // Shared Image Upload & Persistence Handler
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    // Local Preview Optimization
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarUrl(previewUrl);
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    setUploading(true);
+    try {
+      const res = await portfolioApi.uploadImage(formData);
+      if (res.success) {
+        const newAvatarUrl = res.url;
+        setAvatarUrl(newAvatarUrl);
+        
+        // AUTOMATIC PERSISTENCE: Sync both context state and database immediately
+        // This fulfills the requirement for images to appear instantly in live portfolio
+        updatePortfolioState({ avatarUrl: newAvatarUrl });
+        
+        // Pass the override directly to saveChanges to avoid closure staleness
+        const saved = await saveChanges({ avatarUrl: newAvatarUrl });
+        
+        if (saved) {
+          showToast('Visual identity synchronized globally!', 'success');
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Image transmission failed', 'error');
+      // Revert to context value on failure
+      setAvatarUrl(portfolio?.avatarUrl || '');
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Binary PDF Resume Upload handler
@@ -196,97 +236,146 @@ export default function DashboardHome() {
     }
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const handleCopyLink = () => {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+    const shareableUrl = `${appUrl}/portfolio/${user?.username}`;
+    
+    navigator.clipboard.writeText(shareableUrl).then(() => {
+      showToast('Portfolio link copied to clipboard!', 'success');
+    }).catch(() => {
+      showToast('Failed to copy link.', 'error');
+    });
+  };
+
   return (
     <div className="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto relative min-h-[85vh]">
       
-      {/* Absolute Toast alerts */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 25, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className={`px-5 py-3.5 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 min-w-[240px] backdrop-blur-md ${
-                toast.type === 'success' 
-                  ? 'bg-emerald-950/80 border-emerald-500/20 text-emerald-400' 
-                  : 'bg-rose-950/80 border-rose-500/20 text-rose-400'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current inline-block shrink-0 animate-pulse" />
-              <div className="flex-1">{toast.message}</div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {/* Absolute Toast alerts removed in favor of global provider */}
 
       {/* Page Header banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-zinc-900 pb-5 gap-4">
-        <div>
-          <h2 className="text-lg font-black text-white flex items-center gap-2 font-mono">
-            <TrendingUp className="w-5 h-5 text-indigo-400" />
-            CONSOLE_DASHBOARD
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-center justify-between bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/5 border border-indigo-500/10 rounded-3xl p-8 relative overflow-hidden backdrop-blur-sm shadow-xl"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[100px] -mr-32 -mt-32" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-[100px] -ml-32 -mb-32" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400/80 font-mono">Control Center v1.0</span>
+          </div>
+          <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+            {getGreeting()}, {portfolio.fullName?.split(' ')[0]}
           </h2>
-          <p className="text-xs text-zinc-400 leading-relaxed font-sans mt-0.5">
-            Monitor real-time visitor interactions, customize biography settings, check file uploads, and spotlight project catalogs.
+          <p className="text-sm text-zinc-400 leading-relaxed font-medium mt-2 max-w-xl">
+            Everything you need to manage your professional online presence. Track visitors, update your showcase, and refine your brand.
           </p>
         </div>
         
-        {portfolio.fullName && (
-          <a
-            href={`/portfolio/${user?.username}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs font-bold text-zinc-300 hover:text-white rounded-xl transition-all cursor-pointer"
+        <div className="flex items-center gap-3 mt-6 md:mt-0 relative z-10">
+          {portfolio.fullName && (
+            <a
+              href={`/portfolio/${user?.username}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2.5 px-6 py-3 bg-white text-zinc-950 hover:bg-zinc-100 text-xs font-black rounded-2xl transition-all shadow-xl hover:shadow-indigo-500/20"
+            >
+              <span>View Portfolio</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Shareable Link Block */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-zinc-900/20 border border-zinc-900 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="p-3 bg-white/5 text-zinc-400 rounded-xl hidden sm:block">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500 mb-1">Your Unique Shareable Link</h4>
+            <div className="text-sm font-mono text-indigo-400 truncate max-w-xs sm:max-w-md bg-black/30 px-3 py-1.5 rounded-lg border border-white/5">
+              {mounted ? `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/portfolio/${user?.username}` : 'loading link...'}
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button
+            onClick={handleCopyLink}
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-xs font-bold text-white rounded-xl transition-all cursor-pointer group"
           >
-            <span>Preview Live Site</span>
-            <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-          </a>
-        )}
-      </div>
+            <span>Copy Link</span>
+            <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+        </div>
+      </motion.div>
 
       {/* A. Integrated Analytics Metrics Cards (Total counters!) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         
-        <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden backdrop-blur-md">
-          <div className="p-3.5 bg-blue-500/10 text-blue-400 rounded-xl">
-            <Eye className="w-5 h-5" />
+        <motion.div 
+          whileHover={{ y: -4, scale: 1.01 }}
+          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+        >
+          <div className="p-4 bg-blue-500/10 text-blue-400 rounded-2xl group-hover:bg-blue-500/20 transition-all">
+            <Eye className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest font-mono">Profile Views</div>
-            <div className="text-2xl font-black mt-1 text-white">
-              {loadingAnalytics ? '...' : analyticsData?.totals?.views || 0}
+            <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.15em] font-mono">Live Views</div>
+            <div className="text-3xl font-black mt-1 text-white tabular-nums">
+              {loadingAnalytics ? '...' : (analyticsData?.totals?.views || 0).toLocaleString()}
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/[0.02] rounded-full blur-2xl" />
-        </div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.03] rounded-full blur-3xl -mr-16 -mt-16" />
+        </motion.div>
 
-        <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden backdrop-blur-md">
-          <div className="p-3.5 bg-violet-500/10 text-violet-400 rounded-xl">
-            <MousePointer className="w-5 h-5" />
+        <motion.div 
+          whileHover={{ y: -4, scale: 1.01 }}
+          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+        >
+          <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl group-hover:bg-indigo-500/20 transition-all">
+            <MousePointer className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest font-mono">Project Clicks</div>
-            <div className="text-2xl font-black mt-1 text-white">
-              {loadingAnalytics ? '...' : analyticsData?.totals?.clicks || 0}
+            <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.15em] font-mono">Engagement</div>
+            <div className="text-3xl font-black mt-1 text-white tabular-nums">
+              {loadingAnalytics ? '...' : (analyticsData?.totals?.clicks || 0).toLocaleString()}
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-16 h-16 bg-violet-500/[0.02] rounded-full blur-2xl" />
-        </div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/[0.03] rounded-full blur-3xl -mr-16 -mt-16" />
+        </motion.div>
 
-        <div className="bg-zinc-900/40 border border-zinc-900 rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden backdrop-blur-md">
-          <div className="p-3.5 bg-emerald-500/10 text-emerald-400 rounded-xl">
-            <Download className="w-5 h-5" />
+        <motion.div 
+          whileHover={{ y: -4, scale: 1.01 }}
+          className="bg-zinc-900/40 border border-zinc-900 rounded-3xl p-6 flex items-center gap-5 relative overflow-hidden backdrop-blur-md group shadow-lg"
+        >
+          <div className="p-4 bg-emerald-500/10 text-emerald-400 rounded-2xl group-hover:bg-emerald-500/20 transition-all">
+            <Download className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-[10px] text-zinc-500 font-extrabold uppercase tracking-widest font-mono">CV Downloads</div>
-            <div className="text-2xl font-black mt-1 text-white">
-              {loadingAnalytics ? '...' : analyticsData?.totals?.downloads || 0}
+            <div className="text-[10px] text-zinc-500 font-black uppercase tracking-[0.15em] font-mono">Downloads</div>
+            <div className="text-3xl font-black mt-1 text-white tabular-nums">
+              {loadingAnalytics ? '...' : (analyticsData?.totals?.downloads || 0).toLocaleString()}
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/[0.02] rounded-full blur-2xl" />
-        </div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/[0.03] rounded-full blur-3xl -mr-16 -mt-16" />
+        </motion.div>
 
       </div>
 
@@ -327,7 +416,7 @@ export default function DashboardHome() {
                 <div className="relative shrink-0 group">
                   <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-40 transition-opacity" />
                   <img
-                    src={portfolio.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200'}
+                    src={portfolioApi.getImageUrl(portfolio.avatarUrl)}
                     alt={portfolio.fullName}
                     className="w-20 h-20 rounded-full border border-zinc-800 relative z-10 object-cover"
                   />
@@ -343,45 +432,93 @@ export default function DashboardHome() {
               </div>
             ) : (
               <div className="space-y-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-8 p-6 bg-zinc-950/50 border border-zinc-900 rounded-3xl">
+                    <div className="relative group shrink-0">
+                      <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-40 transition-opacity" />
+                      <img
+                        src={portfolioApi.getImageUrl(avatarUrl)}
+                        alt="Preview"
+                        className="w-24 h-24 rounded-full border-2 border-zinc-800 relative z-10 object-cover"
+                      />
+                      <label className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 rounded-full cursor-pointer transition-opacity">
+                        <UploadCloud className="w-6 h-6 text-white" />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(file);
+                          }} 
+                        />
+                      </label>
+                    </div>
+
+                    <div className="flex-1 space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Avatar Image Source</label>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <input
+                            type="text"
+                            value={avatarUrl}
+                            onChange={(e) => setAvatarUrl(e.target.value)}
+                            placeholder="https://image-link.com/photo.jpg"
+                            className="flex-1 px-4 py-3 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-2xl text-sm outline-none transition-all text-white font-sans"
+                          />
+                          
+                          <label className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-xs font-black text-white rounded-2xl transition-all cursor-pointer shadow-lg shadow-indigo-500/10 active:scale-95 group">
+                            <UploadCloud className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+                            <span>Upload Image</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleImageUpload(file);
+                              }} 
+                            />
+                          </label>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+                         <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                         <p className="text-[10px] text-zinc-500 font-medium italic">Pro tip: Use a high-res square image (PNG/JPG/WEBP) for the best cinematic effect.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Full Name</label>
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white font-sans"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Professional Title</label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white font-sans"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Full Name</label>
-                    <input
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white font-sans"
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Professional Bio</label>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white resize-none font-sans"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Professional Title</label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white font-sans"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Avatar Image URL</label>
-                  <input
-                    type="text"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white font-sans"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Professional Bio</label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-850 focus:border-indigo-500 rounded-xl text-sm outline-none transition-all text-white resize-none font-sans"
-                  />
                 </div>
               </div>
             )}

@@ -14,10 +14,13 @@ import {
   Sparkles,
   Layers,
   Layout,
-  ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  UploadCloud,
+  Loader2
 } from 'lucide-react';
 import { Portfolio, Experience, Project } from '../types';
+import { useToast } from '../context/ToastContext';
+import { portfolioApi } from '../utils/api';
 
 interface PortfolioCreatorProps {
   onClose: () => void;
@@ -27,7 +30,8 @@ interface PortfolioCreatorProps {
 export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreatorProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const { showToast } = useToast();
 
   // Main Form State
   const [fullName, setFullName] = useState('');
@@ -62,7 +66,7 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
   // Add sub-list handlers
   const handleAddExperience = () => {
     if (!expCompany || !expRole || !expDuration || !expDesc) {
-      alert('Please fill out all job fields before saving');
+      showToast('Please fill out all job fields', 'error');
       return;
     }
     setExperiences([...experiences, {
@@ -84,7 +88,7 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
 
   const handleAddProject = () => {
     if (!projTitle || !projDesc) {
-      alert('Project Title and Description are required');
+      showToast('Title and Description are required', 'error');
       return;
     }
     setProjects([...projects, {
@@ -111,16 +115,15 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
   // Submit Handler
   const handleFinalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
 
     // Validations
     if (!fullName || !title || !bio) {
-      setError('Name, Title, and Bio are required on Step 1');
+      showToast('Step 1: Required fields missing', 'error');
       setStep(1);
       return;
     }
     if (!email) {
-      setError('Contact Email is required on Step 3');
+      showToast('Step 3: Contact Email is required', 'error');
       setStep(3);
       return;
     }
@@ -151,7 +154,7 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
         onClose();
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to submit portfolio.');
+      showToast(err.message || 'Failed to submit portfolio.', 'error');
     } finally {
       setLoading(false);
     }
@@ -197,11 +200,6 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
 
         {/* Scrollable form body */}
         <div className="flex-grow overflow-y-auto p-6 space-y-6">
-          {error && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-semibold text-rose-400">
-              {error}
-            </div>
-          )}
 
           {/* STEP 1: Basic Info */}
           {step === 1 && (
@@ -244,14 +242,59 @@ export default function PortfolioCreator({ onClose, onSubmit }: PortfolioCreator
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-400 uppercase">Avatar / Profile Image URL</label>
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="e.g. https://images.unsplash.com/... or leave blank"
-                  className="w-full bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-indigo-500 text-sm font-mono text-white px-4 py-3 rounded-xl outline-none transition-all"
-                />
+                <label className="text-xs font-bold text-zinc-400 uppercase">Avatar / Profile Image</label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative group shrink-0">
+                    <img
+                      src={portfolioApi.getImageUrl(avatarUrl)}
+                      alt="Avatar Preview"
+                      className="w-12 h-12 rounded-full border border-zinc-800 object-cover"
+                    />
+                    {uploading && (
+                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="url"
+                      value={avatarUrl}
+                      onChange={(e) => setAvatarUrl(e.target.value)}
+                      placeholder="Enter image URL..."
+                      className="flex-1 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-indigo-500 text-xs font-mono text-white px-4 py-2.5 rounded-xl outline-none transition-all"
+                    />
+                    <label className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-black text-white rounded-xl transition-all cursor-pointer group">
+                      <UploadCloud className="w-3.5 h-3.5 group-hover:-translate-y-0.5 transition-transform" />
+                      <span>Upload</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          setUploading(true);
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          
+                          try {
+                            const res = await portfolioApi.uploadImage(formData);
+                            if (res.success) {
+                              setAvatarUrl(res.url);
+                              showToast('Avatar uploaded successfully!', 'success');
+                            }
+                          } catch (err: any) {
+                            showToast(err.message || 'Upload failed', 'error');
+                          } finally {
+                            setUploading(false);
+                          }
+                        }} 
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

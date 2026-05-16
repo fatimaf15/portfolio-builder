@@ -4,7 +4,8 @@ import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../context/DashboardContext';
-import { motion } from 'framer-motion';
+import { useToast } from '../../context/ToastContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Save, 
   CheckCircle2, 
@@ -21,6 +22,7 @@ export default function TopNavbar() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { unsavedChanges, saveChanges, saving } = useDashboard();
+  const { showToast } = useToast();
 
   // Parse path to yield a clean breadcrumb title
   const getPageTitle = () => {
@@ -33,8 +35,19 @@ export default function TopNavbar() {
   const handleSave = async () => {
     const success = await saveChanges();
     if (success) {
-      alert('Changes synchronized successfully with MongoDB!');
+      showToast('Changes synchronized with MongoDB!', 'success');
     }
+  };
+
+  const handleCopyLink = () => {
+    const baseUrl = window.location.origin;
+    const shareableUrl = `${baseUrl}/portfolio/${user?.username}`;
+    
+    navigator.clipboard.writeText(shareableUrl).then(() => {
+      showToast('Portfolio link copied!', 'success');
+    }).catch(() => {
+      showToast('Failed to copy link.', 'error');
+    });
   };
 
   return (
@@ -52,6 +65,15 @@ export default function TopNavbar() {
       {/* Control Actions Section */}
       <div className="flex items-center gap-4 sm:gap-6">
         
+        {/* Quick Share Button */}
+        <button
+          onClick={handleCopyLink}
+          className="p-2.5 bg-zinc-900 border border-zinc-850 hover:bg-zinc-850 text-zinc-400 hover:text-white rounded-xl transition-all cursor-pointer hidden sm:flex"
+          title="Copy Public Portfolio Link"
+        >
+          <LinkIcon className="w-4 h-4" />
+        </button>
+
         {/* Dynamic Save Changes Banner */}
         <AnimatePresence mode="wait">
           {unsavedChanges ? (
@@ -109,6 +131,3 @@ export default function TopNavbar() {
     </header>
   );
 }
-
-// Clean export wrap for react animate animations
-import { AnimatePresence } from 'framer-motion';

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../../../context/DashboardContext';
-import { portfolioApi } from '../../../utils/api';
+import { portfolioApi, projectsApi } from '../../../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GitBranch, 
@@ -14,10 +14,10 @@ import {
   Loader2, 
   ExternalLink, 
   AlertTriangle, 
-  CheckCircle,
-  Clock,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react';
+import { useToast } from '../../../context/ToastContext';
 
 interface GitHubStats {
   username: string;
@@ -39,13 +39,12 @@ interface GitHubStats {
 }
 
 export default function GitHubPage() {
-  const { portfolio, loading: profileLoading } = useDashboard();
+  const { portfolio, loading: profileLoading, saveChanges } = useDashboard();
   
   const [usernameInput, setUsernameInput] = useState('');
   const [stats, setStats] = useState<GitHubStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   // Auto-fill username on profile load
   useEffect(() => {
@@ -64,26 +63,22 @@ export default function GitHubPage() {
     if (!usernameInput.trim()) return;
 
     setLoading(true);
-    setError(null);
-    setSuccessMsg(null);
-
     try {
       const res = await portfolioApi.getGithubStats(usernameInput.trim());
       if (res.success) {
         setStats(res.data);
-        setSuccessMsg(`Successfully retrieved profile for @${res.data.username}!`);
+        // Link to portfolio permanently for public display
+        await saveChanges({ githubUsername: usernameInput.trim() });
+        showToast(`Profile for @${res.data.username} synced!`, 'success');
       } else {
-        setError('Failed to extract GitHub details. Check your handle name.');
+        showToast('Failed to extract GitHub details.', 'error');
       }
     } catch (err: any) {
-      // Capture 403 API exhaustion rate limits
       const msg = err.response?.data?.message || err.message || '';
       if (msg.includes('403') || msg.includes('rate limit')) {
-        setError(
-          'GitHub API Rate Limit exceeded for your local IP! Please wait an hour, or configure GITHUB_TOKEN inside your server .env file to enable 5,000 requests per hour.'
-        );
+        showToast('GitHub API Rate Limit exceeded!', 'error');
       } else {
-        setError(msg || 'GitHub user not found or connection timed out.');
+        showToast(msg || 'GitHub user not found.', 'error');
       }
     } finally {
       setLoading(false);
@@ -142,38 +137,7 @@ export default function GitHubPage() {
           </div>
         </form>
 
-        {/* API Notifications messages */}
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mt-4 p-4 bg-rose-950/80 border border-rose-500/25 text-rose-400 rounded-xl flex items-start gap-3 text-xs leading-relaxed max-w-2xl"
-            >
-              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-400" />
-              <div>
-                <p className="font-bold">Sync Failed</p>
-                <p className="text-zinc-400 mt-0.5">{error}</p>
-              </div>
-            </motion.div>
-          )}
-
-          {successMsg && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mt-4 p-4 bg-emerald-950/80 border border-emerald-500/25 text-emerald-400 rounded-xl flex items-start gap-3 text-xs leading-relaxed max-w-xl"
-            >
-              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-400" />
-              <div>
-                <p className="font-bold">Fetch Complete</p>
-                <p className="text-zinc-350 mt-0.5">{successMsg}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Notifications are now global toasts */}
       </div>
 
       {/* Shimmering Skeletons loader during fetch transaction */}
@@ -312,14 +276,37 @@ export default function GitHubPage() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <h5 className="text-xs font-bold text-white font-mono group-hover:text-indigo-400 transition-colors">{repo.name}</h5>
-                          <a 
-                            href={repo.url} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="p-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white rounded-lg transition-all border border-zinc-800 cursor-pointer"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await projectsApi.create({
+                                    title: repo.name,
+                                    description: repo.description,
+                                    techStack: [repo.language].filter(l => l && l !== 'Plain Text'),
+                                    githubUrl: repo.url,
+                                    imageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=600'
+                                  });
+                                  if (res.success) {
+                                    showToast(`${repo.name} imported to projects!`, 'success');
+                                  }
+                                } catch (err: any) {
+                                  showToast('Import failed: ' + err.message, 'error');
+                                }
+                              }}
+                              className="px-2 py-1 bg-indigo-600/10 hover:bg-indigo-600 text-[9px] font-bold text-indigo-400 hover:text-white rounded border border-indigo-500/20 transition-all cursor-pointer"
+                            >
+                              Add to Portfolio
+                            </button>
+                            <a 
+                              href={repo.url} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="p-1.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white rounded-lg transition-all border border-zinc-800 cursor-pointer"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
                         </div>
                         <p className="text-[11px] text-zinc-450 leading-relaxed font-sans line-clamp-2">{repo.description}</p>
                       </div>

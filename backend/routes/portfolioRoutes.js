@@ -6,6 +6,7 @@ import {
   updatePortfolio,
   deletePortfolio,
   seedPortfolios,
+  getMyPortfolio,
   getPublicPortfolio,
   uploadResume,
   getGithubStats
@@ -22,6 +23,7 @@ router.post('/resume', protect, upload.single('resume'), uploadResume);
 
 router.post('/public/:username/analytics', recordEvent);
 
+router.get('/me', protect, getMyPortfolio);
 router.get('/public/:username', getPublicPortfolio);
 
 router.route('/')

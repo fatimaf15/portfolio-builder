@@ -12,8 +12,10 @@ import {
   X,
   RefreshCw,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Box
 } from 'lucide-react';
+import { useToast } from '../../../context/ToastContext';
 
 interface ProjectType {
   _id: string;
@@ -40,16 +42,7 @@ export default function ProjectsPage() {
   const [liveUrl, setLiveUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
-  // Toast Notification System
-  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' }[]>([]);
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    const id = Math.random().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
+  const { showToast } = useToast();
 
   // Fetch projects on load
   const loadProjects = async () => {
@@ -118,7 +111,7 @@ export default function ProjectsPage() {
   };
 
   const handleDeleteProject = async (id: string, name: string) => {
-    const confirm = window.confirm(`Are you sure you want to delete "${name}" from MongoDB?`);
+    const confirm = window.confirm(`Are you sure you want to delete "${name}"? This action is permanent and will remove the record from MongoDB.`);
     if (!confirm) return;
 
     setDeletingId(id);
@@ -139,28 +132,6 @@ export default function ProjectsPage() {
   return (
     <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto relative min-h-[85vh]">
       
-      {/* Toast notifications container */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-        <AnimatePresence>
-          {toasts.map((toast) => (
-            <motion.div
-              key={toast.id}
-              initial={{ opacity: 0, y: 25, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className={`px-5 py-3.5 rounded-xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 min-w-[240px] backdrop-blur-md ${
-                toast.type === 'success' 
-                  ? 'bg-emerald-950/80 border-emerald-500/20 text-emerald-400' 
-                  : 'bg-rose-950/80 border-rose-500/20 text-rose-400'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current inline-block shrink-0 animate-pulse" />
-              <div className="flex-1">{toast.message}</div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
       {/* Page Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-900 pb-5">
         <div>
@@ -280,12 +251,23 @@ export default function ProjectsPage() {
               </div>
             ))
           ) : (
-            <div className="col-span-full py-16 text-center bg-zinc-900/10 border border-zinc-900 border-dashed rounded-2xl">
-              <FolderKanban className="w-10 h-10 text-zinc-650 mx-auto mb-4" />
-              <h4 className="text-sm font-bold text-zinc-400">No Showcase Projects</h4>
-              <p className="text-xs text-zinc-500 mt-2 max-w-sm mx-auto leading-relaxed">
-                Add your best engineering solutions, repositories, or website spotlights. Click "Add Spotlight Project" to begin!
-              </p>
+            <div className="col-span-full py-20 text-center bg-zinc-900/10 border border-zinc-900 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center space-y-6">
+              <div className="w-20 h-20 bg-zinc-900/50 rounded-full flex items-center justify-center border border-zinc-850 shadow-inner">
+                <Box className="w-10 h-10 text-zinc-700" />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-lg font-black text-white">Your showcase is currently empty</h4>
+                <p className="text-xs text-zinc-500 max-w-sm mx-auto leading-relaxed">
+                  Start by adding your first engineering masterpiece. It takes less than 30 seconds to spotlight a project in your catalog.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-white text-zinc-950 text-xs font-black hover:bg-zinc-200 transition-all shadow-xl"
+              >
+                <Plus className="w-4 h-4" />
+                Add Your First Project
+              </button>
             </div>
           )}
         </div>

@@ -23,6 +23,32 @@ export const getPortfolios = async (req, res, next) => {
   }
 };
 
+// @desc    Get current user's portfolio
+// @route   GET /api/portfolios/me
+// @access  Private
+export const getMyPortfolio = async (req, res, next) => {
+  try {
+    let portfolio = await Portfolio.findOne({ user: req.user._id });
+    
+    // Self-healing migration: If not found by ID, look by username (legacy support)
+    if (!portfolio) {
+      portfolio = await Portfolio.findOne({ fullName: req.user.username });
+      if (portfolio && !portfolio.user) {
+        portfolio.user = req.user._id;
+        await portfolio.save();
+        console.log(`✅ Migrated legacy portfolio for ${req.user.username}`);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: portfolio ? [portfolio] : []
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get a single portfolio by ID
 // @route   GET /api/portfolios/:id
 // @access  Public
@@ -49,6 +75,16 @@ export const getPortfolioById = async (req, res, next) => {
 // @access  Public
 export const createPortfolio = async (req, res, next) => {
   try {
+    // Attach current user ID to the portfolio document
+    req.body.user = req.user._id;
+
+    // Check if user already has a portfolio to prevent duplicates
+    const existing = await Portfolio.findOne({ user: req.user._id });
+    if (existing) {
+      res.status(400);
+      throw new Error('User already has a portfolio profile. Please update the existing one.');
+    }
+
     const portfolio = await Portfolio.create(req.body);
     res.status(201).json({
       success: true,
@@ -70,6 +106,12 @@ export const updatePortfolio = async (req, res, next) => {
     if (!portfolio) {
       res.status(404);
       throw new Error(`Portfolio not found with id of ${req.params.id}`);
+    }
+
+    // Ownership check
+    if (portfolio.user.toString() !== req.user._id.toString()) {
+      res.status(401);
+      throw new Error('User not authorized to update this portfolio');
     }
 
     portfolio = await Portfolio.findByIdAndUpdate(req.params.id, req.body, {
@@ -99,6 +141,12 @@ export const deletePortfolio = async (req, res, next) => {
       throw new Error(`Portfolio not found with id of ${req.params.id}`);
     }
 
+    // Ownership check
+    if (portfolio.user.toString() !== req.user._id.toString()) {
+      res.status(401);
+      throw new Error('User not authorized to delete this portfolio');
+    }
+
     await portfolio.deleteOne();
 
     res.status(200).json({
@@ -115,11 +163,12 @@ export const deletePortfolio = async (req, res, next) => {
 // @access  Public
 export const seedPortfolios = async (req, res, next) => {
   try {
-    // Clear existing portfolios first to prevent duplicates
-    await Portfolio.deleteMany({});
+    // Clear existing portfolios for THIS user
+    await Portfolio.deleteMany({ user: req.user._id });
 
     const samplePortfolios = [
       {
+        user: req.user._id,
         fullName: "Alex Rivera",
         title: "Senior Full Stack Engineer & Cloud Architect",
         bio: "Creative developer passionate about building performant, responsive web apps and cloud architectures. Over 6 years of experience across React, Next.js, Node, and AWS, helping startups scale from zero to millions.",
@@ -166,6 +215,7 @@ export const seedPortfolios = async (req, res, next) => {
         ]
       },
       {
+        user: req.user._id,
         fullName: "Marcus Chen",
         title: "Frontend Architect & Interaction Designer",
         bio: "Specializing in ultra-smooth animations, motion design, and high-fidelity 3D-integrated user interfaces. Dedicated to turning visual concepts into immersive, high-conversion user experiences.",
@@ -234,10 +284,21 @@ export const getPublicPortfolio = async (req, res, next) => {
     // 4. Fetch socials
     const socials = await SocialLink.find({ user: user._id }).sort({ platform: 1 });
 
-    // 5. Fetch general portfolio details
-    let portfolio = await Portfolio.findOne({ fullName: user.username });
+    // 5. Fetch general portfolio details using user ID association
+    let portfolio = await Portfolio.findOne({ user: user._id });
     if (!portfolio) {
-      portfolio = await Portfolio.findOne(); // absolute fallback
+      // Fallback only if no associated portfolio exists yet
+      portfolio = await Portfolio.findOne({ fullName: user.username });
+    }
+
+    // 6. Optionally fetch GitHub stats if linked
+    let githubStats = null;
+    if (portfolio?.githubUsername) {
+      try {
+        githubStats = await fetchGithubStatsHelper(portfolio.githubUsername);
+      } catch (err) {
+        console.error('Failed to pre-fetch github stats for public view:', err.message);
+      }
     }
 
     // Return unified aggregated response
@@ -251,6 +312,8 @@ export const getPublicPortfolio = async (req, res, next) => {
         bio: portfolio?.bio || 'Passionate developer and builder.',
         avatarUrl: portfolio?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200',
         resumeUrl: portfolio?.resumeUrl || '',
+        githubUsername: portfolio?.githubUsername || '',
+        githubStats: githubStats,
         template: portfolio?.template || 'dark',
         themeSettings: portfolio?.themeSettings || {
           mode: 'dark',
@@ -282,10 +345,11 @@ export const uploadResume = async (req, res, next) => {
       throw new Error('Please upload a PDF file');
     }
 
-    // 1. Locate user's active portfolio profile
-    let portfolio = await Portfolio.findOne({ fullName: req.user.username });
+    // 1. Locate user's active portfolio profile using ID
+    let portfolio = await Portfolio.findOne({ user: req.user._id });
     if (!portfolio) {
-      portfolio = await Portfolio.findOne(); // fallback to first record
+      // Emergency fallback for legacy migration
+      portfolio = await Portfolio.findOne({ fullName: req.user.username });
       if (!portfolio) {
         res.status(404);
         throw new Error('Portfolio profile not found. Please create one first before uploading a resume.');
@@ -327,98 +391,84 @@ export const uploadResume = async (req, res, next) => {
   }
 };
 
+// Helper to fetch github stats
+const fetchGithubStatsHelper = async (username) => {
+  const headers = {
+    'User-Agent': 'Developer-Portfolio-Builder',
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if (process.env.GITHUB_TOKEN) {
+    headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+  }
+
+  const profileRes = await fetch(`https://api.github.com/users/${username}`, { headers });
+  if (!profileRes.ok) return null;
+  const profileData = await profileRes.json();
+
+  const reposRes = await fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`, { headers });
+  let reposData = [];
+  if (reposRes.ok) {
+    reposData = await reposRes.json();
+  }
+
+  let totalStars = 0;
+  const languagesMap = {};
+  const topRepos = [];
+
+  reposData.forEach(repo => {
+    totalStars += repo.stargazers_count || 0;
+    if (repo.language) {
+      languagesMap[repo.language] = (languagesMap[repo.language] || 0) + 1;
+    }
+    topRepos.push({
+      name: repo.name,
+      description: repo.description || 'No description provided.',
+      stars: repo.stargazers_count || 0,
+      forks: repo.forks_count || 0,
+      language: repo.language || 'Plain Text',
+      url: repo.html_url,
+      updatedAt: repo.updated_at
+    });
+  });
+
+  const topLanguages = Object.entries(languagesMap)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+
+  const spotlightRepos = topRepos
+    .sort((a, b) => b.stars - a.stars)
+    .slice(0, 3);
+
+  return {
+    username: profileData.login,
+    name: profileData.name || profileData.login,
+    avatarUrl: profileData.avatar_url,
+    bio: profileData.bio || 'This developer has no GitHub biography.',
+    publicRepos: profileData.public_repos,
+    followers: profileData.followers,
+    totalStars,
+    topLanguages,
+    spotlightRepos
+  };
+};
+
 // @desc    Fetch GitHub profile statistics and repositories
 // @route   GET /api/portfolios/github/:username
 // @access  Public
 export const getGithubStats = async (req, res, next) => {
   try {
     const { username } = req.params;
-    if (!username) {
-      res.status(400);
-      throw new Error('Please provide a GitHub username');
-    }
-
-    // Prepare headers (inject GITHUB_TOKEN if available in .env)
-    const headers = {
-      'User-Agent': 'Developer-Portfolio-Builder',
-      'Accept': 'application/vnd.github.v3+json'
-    };
-    if (process.env.GITHUB_TOKEN) {
-      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
-    }
-
-    // 1. Fetch GitHub User Profile
-    const profileRes = await fetch(`https://api.github.com/users/${username}`, { headers });
+    const stats = await fetchGithubStatsHelper(username);
     
-    if (profileRes.status === 404) {
+    if (!stats) {
       res.status(404);
-      throw new Error(`GitHub user "${username}" not found on GitHub.`);
+      throw new Error(`GitHub user "${username}" not found.`);
     }
-
-    if (!profileRes.ok) {
-      res.status(profileRes.status);
-      throw new Error(`GitHub API Error: ${profileRes.statusText || 'Unable to fetch profile'}`);
-    }
-
-    const profileData = await profileRes.json();
-
-    // 2. Fetch User Repositories (up to 100) to aggregate stats
-    const reposRes = await fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`, { headers });
-    let reposData = [];
-    if (reposRes.ok) {
-      reposData = await reposRes.json();
-    }
-
-    // Calculate total stars, languages, and top repositories
-    let totalStars = 0;
-    const languagesMap = {};
-    const topRepos = [];
-
-    reposData.forEach(repo => {
-      // Increment star count
-      totalStars += repo.stargazers_count || 0;
-
-      // Map languages
-      if (repo.language) {
-        languagesMap[repo.language] = (languagesMap[repo.language] || 0) + 1;
-      }
-
-      // Add to potential spotlight list
-      topRepos.push({
-        name: repo.name,
-        description: repo.description || 'No description provided.',
-        stars: repo.stargazers_count || 0,
-        forks: repo.forks_count || 0,
-        language: repo.language || 'Plain Text',
-        url: repo.html_url,
-        updatedAt: repo.updated_at
-      });
-    });
-
-    // Sort languages to find top 4
-    const topLanguages = Object.entries(languagesMap)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-
-    // Sort repositories by stargazers count to get top 3 spotlight repos
-    const spotlightRepos = topRepos
-      .sort((a, b) => b.stars - a.stars)
-      .slice(0, 3);
 
     res.status(200).json({
       success: true,
-      data: {
-        username: profileData.login,
-        name: profileData.name || profileData.login,
-        avatarUrl: profileData.avatar_url,
-        bio: profileData.bio || 'This developer has no GitHub biography.',
-        publicRepos: profileData.public_repos,
-        followers: profileData.followers,
-        totalStars,
-        topLanguages,
-        spotlightRepos
-      }
+      data: stats
     });
 
   } catch (error) {
