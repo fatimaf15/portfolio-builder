@@ -13,7 +13,7 @@ interface DashboardContextType {
   unsavedChanges: boolean;
   fetchPortfolio: () => Promise<void>;
   updatePortfolioState: (updatedFields: Partial<Portfolio>) => void;
-  saveChanges: () => Promise<boolean>;
+  saveChanges: (overrides?: Partial<Portfolio>) => Promise<boolean>;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);

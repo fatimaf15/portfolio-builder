@@ -41,6 +41,7 @@ export interface Portfolio {
   experience: Experience[];
   projects: Project[];
   contact: Contact;
+  githubUsername?: string;
   template: 'dark' | 'light' | 'minimal' | 'futuristic';
   themeSettings?: ThemeSettings;
   sectionOrder?: string[];

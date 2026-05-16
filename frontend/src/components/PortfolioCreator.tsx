@@ -15,6 +15,7 @@ import {
   Layers,
   Layout,
   ChevronLeft,
+  ChevronRight,
   UploadCloud,
   Loader2
 } from 'lucide-react';
